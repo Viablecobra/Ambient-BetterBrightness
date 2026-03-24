@@ -1,0 +1,60 @@
+name: Build libBetterBrightness
+
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: "Target ABI"
+        required: false
+        default: "arm64-v8a"
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+      ndk_version:
+        description: "NDK version"
+        required: false
+        default: "r27c"
+
+jobs:
+  build:
+    name: Build (${{ github.event.inputs.abi }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ github.event.inputs.ndk_version }}
+          add-to-path: true
+          local-cache: true
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=${{ github.event.inputs.abi }} \
+            -DANDROID_PLATFORM=android-21 \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target BetterBrightness -j$(nproc)
+
+      - name: Verify output
+        run: |
+          LIB=build/libBetterBrightness.so
+          test -f "$LIB" && echo "✅ Build succeeded" || (echo "❌ .so not found" && exit 1)
+          file "$LIB"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libBetterBrightness-${{ github.event.inputs.abi }}
+          path: build/libBetterBrightness.so
+          if-no-files-found: error
+          retention-days: 30
