@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include "stub.h"
 #include "memscan.h"
+#include "nop.h"
 #include "proc.h"
 
 static const char* GFX_GAMMA_SIG =
@@ -28,8 +29,8 @@ static uint8_t g_saved_fmov[PATCH_SIZE];
 static bool    g_patched   = false;
 
 static bool PatchMemory(void* addr, const void* data, size_t size) {
-    uintptr_t page_start = (uintptr_t)addr & ~(4095UL);
-    size_t    page_size  = ((uintptr_t)addr + size - page_start + 4095) & ~(4095UL);
+    uintptr_t page_start = (uintptr_t)addr & ~(uintptr_t)4095;
+    size_t    page_size  = ((uintptr_t)addr + size - page_start + 4095) & ~(uintptr_t)4095;
 
     if (mprotect((void*)page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
         return false;
@@ -51,7 +52,6 @@ static void* PatchThread(void*) {
                 uint8_t*  base      = (uint8_t*)addr;
                 uint32_t* fmov_addr = (uint32_t*)(base + OFFSET_FMOV);
 
-                // Guard: verify expected instruction before patching
                 if (*fmov_addr == FMOV_S2_1_0) {
                     uint32_t* movk_addr = (uint32_t*)(base + OFFSET_MOVK);
 
@@ -69,14 +69,13 @@ static void* PatchThread(void*) {
                 }
             }
         }
-
         if (!g_patched) usleep(100 * 1000);
     }
     return nullptr;
 }
 
 __attribute__((constructor))
-void BetterBrightness_Init() {
+void StartUp() {
     pthread_t t;
     pthread_create(&t, nullptr, PatchThread, nullptr);
     pthread_detach(t);
