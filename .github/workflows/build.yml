@@ -35,17 +35,19 @@ jobs:
 
       - name: Configure CMake
         run: |
-          ABI=${{ github.event.inputs.abi }}
           NDK=${{ steps.setup-ndk.outputs.ndk-path }}
-          TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin
+          ABI=${{ github.event.inputs.abi }}
 
           if [ "$ABI" = "arm64-v8a" ]; then
-            CC=$TOOLCHAIN/aarch64-linux-android21-clang
-            CXX=$TOOLCHAIN/aarch64-linux-android21-clang++
+            CC=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang
+            CXX=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++
           else
-            CC=$TOOLCHAIN/armv7a-linux-androideabi21-clang
-            CXX=$TOOLCHAIN/armv7a-linux-androideabi21-clang++
+            CC=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
+            CXX=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang++
           fi
+
+          echo "CC=$CC"
+          echo "CXX=$CXX"
 
           cmake -B build \
             -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
