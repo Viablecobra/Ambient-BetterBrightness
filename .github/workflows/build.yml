@@ -35,12 +35,27 @@ jobs:
 
       - name: Configure CMake
         run: |
+          ABI=${{ github.event.inputs.abi }}
+          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
+          TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin
+
+          if [ "$ABI" = "arm64-v8a" ]; then
+            CC=$TOOLCHAIN/aarch64-linux-android21-clang
+            CXX=$TOOLCHAIN/aarch64-linux-android21-clang++
+          else
+            CC=$TOOLCHAIN/armv7a-linux-androideabi21-clang
+            CXX=$TOOLCHAIN/armv7a-linux-androideabi21-clang++
+          fi
+
           cmake -B build \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=${{ github.event.inputs.abi }} \
+            -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=$ABI \
             -DANDROID_PLATFORM=android-21 \
             -DANDROID_STL=c++_shared \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DANDROID_NDK=$NDK \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX
 
       - name: Build
         run: cmake --build build --target BetterBrightness -j$(nproc)
@@ -48,7 +63,7 @@ jobs:
       - name: Verify output
         run: |
           LIB=build/libBetterBrightness.so
-          test -f "$LIB" && echo "✅ Build succeeded" || (echo "❌ .so not found" && exit 1)
+          test -f "$LIB" && echo "Build succeeded" || (echo ".so not found" && exit 1)
           file "$LIB"
 
       - name: Upload artifact
